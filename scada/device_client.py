@@ -507,5 +507,3 @@ class DeviceClient:
                 client.close()
             except Exception:
                 pass
-/app #
-
