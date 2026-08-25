@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SCADA{% endblock %} — Plant Server</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Consolas, monospace; background: #0d1117; color: #c9d1d9; font-size: 14px; }
+
+        .topbar { background: #161b22; border-bottom: 2px solid #f78166; padding: 8px 20px; display: flex; align-items: center; justify-content: space-between; }
+        .topbar h1 { font-size: 18px; color: #f78166; letter-spacing: 1px; }
+        .topbar .clock { color: #484f58; font-size: 13px; }
+        .topbar .stats { color: #484f58; font-size: 11px; }
+
+        nav { background: #161b22; display: flex; gap: 0; border-bottom: 1px solid #30363d; }
+        nav a { color: #8b949e; text-decoration: none; padding: 10px 20px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid #21262d; transition: all 0.2s; }
+        nav a:hover { background: #21262d; color: #c9d1d9; }
+        nav a.active { color: #f78166; border-bottom: 2px solid #f78166; }
+
+        .content { padding: 20px; }
+
+        .card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; margin-bottom: 15px; }
+        .card-header { background: #21262d; padding: 10px 15px; font-weight: 600; font-size: 13px; color: #f78166; text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; border-radius: 6px 6px 0 0; }
+
+        .sensor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; padding: 12px; }
+        .sensor-tile { background: #0d1117; border: 1px solid #30363d; border-radius: 4px; padding: 10px; text-align: center; }
+        .sensor-tile .tag { font-size: 11px; color: #484f58; margin-bottom: 2px; }
+        .sensor-tile .value { font-size: 22px; font-weight: 700; font-family: Consolas, monospace; color: #58a6ff; }
+        .sensor-tile .units { font-size: 10px; color: #484f58; }
+        .sensor-tile .desc { font-size: 10px; color: #30363d; margin-top: 3px; }
+        .sensor-tile.offline { opacity: 0.4; }
+        .sensor-tile.offline .value { color: #484f58; }
+        .sensor-tile.status-normal .value { color: #58a6ff; }
+        .sensor-tile.status-high .value { color: #d29922; }
+        .sensor-tile.status-high { border-color: #d29922; border-width: 2px; }
+        .sensor-tile.status-hihi .value { color: #da3633; }
+        .sensor-tile.status-hihi { border-color: #da3633; border-width: 2px; animation: alarm-flash 1s infinite; }
+        .sensor-tile.status-low .value { color: #58a6ff; }
+        .sensor-tile.status-low { border-color: #58a6ff; border-width: 2px; }
+        .sensor-tile.status-lolo .value { color: #bc8cff; }
+        .sensor-tile.status-lolo { border-color: #bc8cff; border-width: 2px; animation: alarm-flash 1s infinite; }
+        .sensor-tile.status-stale { opacity: 0.4; }
+        @keyframes alarm-flash { 0%,100% { background: #0d1117; } 50% { background: #1a0d0d; } }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        .level-HIHI, .level-LOLO { color: #da3633; font-weight: 700; }
+        .level-HI { color: #d29922; font-weight: 600; }
+        .level-LO { color: #58a6ff; font-weight: 600; }
+        .acked { color: #484f58; text-decoration: line-through; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #21262d; color: #8b949e; padding: 8px 12px; text-align: left; font-size: 12px; text-transform: uppercase; }
+        td { padding: 8px 12px; border-bottom: 1px solid #21262d; font-size: 13px; }
+        tr:hover { background: #161b22; }
+
+        .btn { padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+        .btn-primary { background: #238636; color: #fff; }
+        .btn-primary:hover { background: #2ea043; }
+        .btn-secondary { background: #30363d; color: #c9d1d9; }
+        .btn-secondary:hover { background: #484f58; }
+
+        input[type="number"], input[type="text"], input[type="date"], select {
+            background: #0d1117; border: 1px solid #30363d; color: #c9d1d9;
+            padding: 5px 8px; border-radius: 4px; font-family: Consolas, monospace;
+        }
+        input:focus, select:focus { border-color: #58a6ff; outline: none; }
+
+        .stat-bar { display: flex; gap: 20px; padding: 12px; flex-wrap: wrap; }
+        .stat-item { text-align: center; }
+        .stat-item .stat-value { font-size: 28px; font-weight: 700; color: #58a6ff; font-family: Consolas, monospace; }
+        .stat-item .stat-label { font-size: 11px; color: #484f58; text-transform: uppercase; }
+
+        .chart-container { padding: 15px; position: relative; height: 350px; }
+
+        .info-strip { background: #0d1117; padding: 5px 20px; font-size: 11px; color: #30363d; display: flex; justify-content: space-between; border-top: 1px solid #21262d; }
+
+        .trend-selector { display: flex; gap: 10px; align-items: center; padding: 12px; flex-wrap: wrap; }
+        .trend-selector label { font-size: 12px; color: #8b949e; }
+        .duration-btn { padding: 4px 10px; border: 1px solid #30363d; background: #0d1117; color: #8b949e; border-radius: 3px; cursor: pointer; font-size: 12px; }
+        .duration-btn.active { background: #f78166; color: #fff; border-color: #f78166; }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <h1>&#9881; SCADA / PLANT SERVER</h1>
+        <div class="clock" id="clock"></div>
+    </div>
+    <nav>
+        <a href="/" class="{{ 'active' if request.path == '/' }}">Diagram</a>
+        <a href="/overview" class="{{ 'active' if request.path == '/overview' }}">Overview</a>
+        <a href="/control" class="{{ 'active' if request.path == '/control' }}">Control</a>
+        <a href="/plc-logic" class="{{ 'active' if request.path.startswith('/plc-logic') }}">PLC Logic</a>
+        <a href="/trends" class="{{ 'active' if request.path == '/trends' }}">Trends</a>
+        <a href="/settings" class="{{ 'active' if request.path == '/settings' }}">Settings</a>
+        <a href="/reports" class="{{ 'active' if request.path == '/reports' }}">Reports</a>
+        <a href="/events" class="{{ 'active' if request.path == '/events' }}">Events</a>
+        <a href="/audit" class="{{ 'active' if request.path == '/audit' }}">Audit</a>
+    </nav>
+
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+
+    <div class="info-strip">
+        <span>SCADA Server v1.0 — Historian</span>
+        <span id="refresh-status">Active</span>
+    </div>
+
+    <script>
+        function updateClock() {
+            document.getElementById('clock').textContent = new Date().toLocaleString();
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
