@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <div class="stat-bar">
+        <div class="stat-item">
+            <div class="stat-value">{{ device_count }}</div>
+            <div class="stat-label">Devices</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ stats.readings }}</div>
+            <div class="stat-label">Readings</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">{{ stats.db_size_mb }} MB</div>
+            <div class="stat-label">Historian</div>
+        </div>
+    </div>
+    <form method="POST" action="/rediscover" style="display:inline;">
+        <button class="btn btn-secondary" type="submit">&#8635; Rediscover</button>
+    </form>
+</div>
+
+{% for plc_name, sensors in groups.items() %}
+<div class="card">
+    <div class="card-header">
+        <span>&#9655; {{ plc_name }}</span>
+        <span>{{ sensors|length }} device(s)</span>
+    </div>
+    <div class="sensor-grid">
+        {% for s in sensors %}
+        <div class="sensor-tile {{ 'offline' if not s.online }} status-{{ sensor_status.get(s.tag, 'normal') }}" id="tile-{{ s.tag }}">
+            <div class="tag">{{ s.tag }}</div>
+            <div class="value" id="val-{{ s.tag }}">{{ s.value|val }}</div>
+            <div class="units">{{ s.metadata.units }}</div>
+            <div class="desc">{{ s.metadata.description }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
+
+{% if not groups %}
+<div class="card">
+    <div class="card-header"><span>No Devices</span></div>
+    <div style="padding: 20px; color: #484f58; text-align: center;">
+        No devices discovered. Click Rediscover or check SCADA_SUBNETS.
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const STATUS_CLASSES = ['status-normal','status-high','status-hihi','status-low','status-lolo','status-stale'];
+
+function refreshData() {
+    fetch('/api/sensors')
+        .then(r => r.json())
+        .then(data => {
+            for (const [tag, info] of Object.entries(data)) {
+                const valEl = document.getElementById('val-' + tag);
+                const tileEl = document.getElementById('tile-' + tag);
+                if (valEl) {
+                    if (info.value === null || info.value === undefined) valEl.textContent = '—';
+                    else if (typeof info.value === 'boolean') valEl.textContent = info.value ? 'ON' : 'OFF';
+                    else if (typeof info.value === 'number') valEl.textContent = info.value.toFixed(2);
+                    else valEl.textContent = info.value;
+                }
+                if (tileEl) {
+                    tileEl.classList.toggle('offline', !info.online);
+                    STATUS_CLASSES.forEach(c => tileEl.classList.remove(c));
+                    tileEl.classList.add('status-' + (info.status || 'normal'));
+                }
+            }
+        });
+}
+setInterval(refreshData, 2000);
+</script>
+{% endblock %}
