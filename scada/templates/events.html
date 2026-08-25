@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span>&#128203; Daily Summary Report</span>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <form method="GET" action="/reports" style="display:flex; gap:8px; align-items:center;">
+                <input type="date" name="date" value="{{ selected_date }}">
+                <button class="btn btn-secondary" type="submit">View</button>
+            </form>
+            <form method="POST" action="/reports/generate" style="display:inline;">
+                <input type="hidden" name="date" value="{{ selected_date }}">
+                <button class="btn btn-primary" type="submit">Generate Report</button>
+            </form>
+        </div>
+    </div>
+
+    {% if summaries %}
+    <table>
+        <thead>
+            <tr>
+                <th>Tag</th>
+                <th>Date</th>
+                <th>Min</th>
+                <th>Max</th>
+                <th>Average</th>
+                <th>Samples</th>
+                <th>Range</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in summaries %}
+            <tr>
+                <td><strong>{{ s.tag }}</strong></td>
+                <td>{{ s.date }}</td>
+                <td style="font-family: Consolas, monospace; color: #58a6ff;">{{ "%.2f"|format(s.min_value) if s.min_value is not none else '—' }}</td>
+                <td style="font-family: Consolas, monospace; color: #f78166;">{{ "%.2f"|format(s.max_value) if s.max_value is not none else '—' }}</td>
+                <td style="font-family: Consolas, monospace; color: #7ee787;">{{ "%.2f"|format(s.avg_value) if s.avg_value is not none else '—' }}</td>
+                <td>{{ s.sample_count }}</td>
+                <td style="font-family: Consolas, monospace; color: #484f58;">
+                    {% if s.min_value is not none and s.max_value is not none %}
+                        {{ "%.2f"|format(s.max_value - s.min_value) }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="padding: 20px; color: #484f58; text-align: center;">
+        No summary data for {{ selected_date }}. Click "Generate Report" to create one from recorded historian data.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+/app # ^C
+/app #
+/app #
+/app #
+/app #
+/app #
+/app #
+/app #
+/app #
+/app # cat /app/scada/templates/events.html
+{% extends "base.html" %}
+{% block title %}Events{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span>&#128221; System Events</span>
+        <span>Last 200 entries</span>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Type</th>
+                <th>Tag</th>
+                <th>Message</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in events %}
+            <tr>
+                <td>{{ e.timestamp|ts }}</td>
+                <td>
+                    {% if e.event_type == 'STARTUP' %}
+                        <span style="color: #7ee787;">&#9654; STARTUP</span>
+                    {% elif e.event_type == 'DISCOVERY' %}
+                        <span style="color: #58a6ff;">&#128269; DISCOVERY</span>
+                    {% elif e.event_type == 'REPORT_GENERATED' %}
+                        <span style="color: #d2a8ff;">&#128203; REPORT</span>
+                    {% elif e.event_type == 'PRUNE' %}
+                        <span style="color: #484f58;">&#128465; PRUNE</span>
+                    {% else %}
+                        {{ e.event_type }}
+                    {% endif %}
+                </td>
+                <td>{{ e.tag or '—' }}</td>
+                <td>{{ e.message or '—' }}</td>
+                <td style="font-family: Consolas, monospace;">{{ e.value if e.value is not none else '—' }}</td>
+            </tr>
+            {% endfor %}
+            {% if not events %}
+            <tr><td colspan="5" style="text-align:center; color:#484f58; padding:20px;">No events recorded</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
