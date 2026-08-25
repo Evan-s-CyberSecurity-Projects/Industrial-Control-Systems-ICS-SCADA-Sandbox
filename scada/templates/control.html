@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Sensor Control{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span>&#9881; Sensor Control Panel</span>
+        <form method="POST" action="/control/set-auto-all" style="display:inline;">
+            <button class="btn btn-secondary" type="submit">&#8635; Return All to AUTO</button>
+        </form>
+    </div>
+    <div style="padding: 8px 15px; background: #0d1117; border-bottom: 1px solid #30363d; font-size: 12px; color: #8b949e;">
+        Set sensors to <strong>MANUAL</strong> mode to freeze simulation and inject specific values.
+        Use this to simulate attack scenarios (spoofed readings), equipment failures, or environmental conditions (freezing temps, high flow events).
+        Click <strong>AUTO</strong> to resume normal simulation.
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Tag</th>
+                <th>Description</th>
+                <th>Current Value</th>
+                <th>Units</th>
+                <th>Mode</th>
+                <th>Set Value</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in sensors %}
+            <tr style="{{ 'background: #1a1a0d;' if s.mode == 'MANUAL' else '' }}">
+                <td><strong>{{ s.tag }}</strong></td>
+                <td>{{ s.description }}</td>
+                <td style="font-family: Consolas, monospace; font-size: 15px;
+                    {{ 'color: #d29922;' if s.mode == 'MANUAL' else 'color: #58a6ff;' }}">
+                    {{ s.value|val }}
+                </td>
+                <td>{{ s.units }}</td>
+                <td>
+                    {% if s.mode == 'MANUAL' %}
+                    <span style="color: #d29922; font-weight: 700;">&#9888; MANUAL</span>
+                    {% else %}
+                    <span style="color: #7ee787;">&#9654; AUTO</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <form method="POST" action="/control/set-value" style="display: flex; gap: 4px;">
+                        <input type="hidden" name="tag" value="{{ s.tag }}">
+                        {% if s.data_type == 'BOOL' %}
+                        <select name="value" style="width: 80px;">
+                            <option value="true">ON</option>
+                            <option value="false" selected>OFF</option>
+                        </select>
+                        {% else %}
+                        <input type="number" step="any" name="value" placeholder="value" style="width: 100px;">
+                        {% endif %}
+                        <button class="btn btn-primary" type="submit" style="font-size: 10px;">SET</button>
+                    </form>
+                </td>
+                <td>
+                    {% if s.mode == 'MANUAL' %}
+                    <form method="POST" action="/control/set-mode" style="display: inline;">
+                        <input type="hidden" name="tag" value="{{ s.tag }}">
+                        <input type="hidden" name="mode" value="auto">
+                        <button class="btn btn-secondary" type="submit" style="font-size: 10px;">&#9654; AUTO</button>
+                    </form>
+                    {% else %}
+                    <form method="POST" action="/control/set-mode" style="display: inline;">
+                        <input type="hidden" name="tag" value="{{ s.tag }}">
+                        <input type="hidden" name="mode" value="manual">
+                        <button class="btn btn-secondary" type="submit" style="font-size: 10px;">&#9208; FREEZE</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card" style="margin-top: 15px;">
+    <div class="card-header"><span>&#127919; Scenario Presets</span></div>
+    <div style="padding: 15px; display: flex; flex-wrap: wrap; gap: 10px;">
+        <button class="btn btn-secondary" onclick="applyPreset('freezing')" style="font-size: 11px;">
+            &#10052; Freezing Conditions
+        </button>
+        <button class="btn btn-secondary" onclick="applyPreset('overflow')" style="font-size: 11px;">
+            &#127754; Tank Overflow
+        </button>
+        <button class="btn btn-secondary" onclick="applyPreset('lowflow')" style="font-size: 11px;">
+            &#128167; Low Flow Event
+        </button>
+        <button class="btn btn-secondary" onclick="applyPreset('chlorine_fail')" style="font-size: 11px;">
+            &#9888; Chlorine System Failure
+        </button>
+        <button class="btn btn-secondary" onclick="applyPreset('normal')" style="font-size: 11px;">
+            &#9654; Return All to Normal
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PRESETS = {
+    freezing: {
+        description: "Outside temperature below freezing — affects all temperature and flow sensors",
+        values: {
+            "T-701": -2.0,
+            "FT-101": 50.0,
+            "FT-201": 40.0,
+            "FT-301": 200.0,
+            "FT-401": 35.0,
+            "FT-501": 30.0,
+            "FT-601": 5.0,
+            "FT-701": 3.0,
+        }
+    },
+    overflow: {
+        description: "Tank levels rising to dangerous levels",
+        values: {
+            "LT-101": 98.0,
+            "LT-201": 95.0,
+            "LT-401": 92.0,
+            "LT-501": 97.0,
+            "LT-601": 90.0,
+        }
+    },
+    lowflow: {
+        description: "Very low flow throughout the plant",
+        values: {
+            "FT-101": 25.0,
+            "FT-201": 20.0,
+            "FT-301": 100.0,
+            "FT-401": 18.0,
+            "FT-501": 15.0,
+            "FT-601": 2.0,
+            "FT-701": 1.0,
+        }
+    },
+    chlorine_fail: {
+        description: "Chlorine dosing system failure — residual drops to zero",
+        values: {
+            "CL-501": 0.02,
+            "AV-501": false,
+        }
+    },
+    normal: null,
+};
+
+async function applyPreset(name) {
+    if (name === 'normal') {
+        if (!confirm('Return ALL sensors to automatic simulation mode?')) return;
+        const resp = await fetch('/control/set-auto-all', {method: 'POST'});
+        location.reload();
+        return;
+    }
+
+    const preset = PRESETS[name];
+    if (!preset) return;
+    if (!confirm('Apply preset: ' + preset.description + '?')) return;
+
+    for (const [tag, value] of Object.entries(preset.values)) {
+        await fetch('/api/control/set-value', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({tag, value}),
+        });
+    }
+    location.reload();
+}
+</script>
+{% endblock %}
