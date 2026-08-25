@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Audit Log{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span>&#128221; Audit Trail</span>
+        <span>All setting changes and HMI push events</span>
+    </div>
+    <table>
+        <thead>
+            <tr><th>Time</th><th>Action</th><th>Tag</th><th>Details</th><th>Previous</th><th>New</th></tr>
+        </thead>
+        <tbody>
+            {% for entry in log %}
+            <tr>
+                <td>{{ entry.timestamp|ts }}</td>
+                <td>
+                    {% if entry.action == 'ALARM_CONFIG_CHANGE' %}<span style="color:#d29922;">&#9881; CONFIG</span>
+                    {% elif entry.action == 'PUSH_ALL' %}<span style="color:#58a6ff;">&#8635; PUSH ALL</span>
+                    {% elif entry.action == 'DEFAULTS_LOADED' %}<span style="color:#7ee787;">&#9654; DEFAULTS</span>
+                    {% else %}{{ entry.action }}{% endif %}
+                </td>
+                <td>{{ entry.tag or '—' }}</td>
+                <td>{{ entry.details or '—' }}</td>
+                <td style="font-family:Consolas,monospace;font-size:11px;">{{ entry.old_value or '—' }}</td>
+                <td style="font-family:Consolas,monospace;font-size:11px;">{{ entry.new_value or '—' }}</td>
+            </tr>
+            {% endfor %}
+            {% if not log %}
+            <tr><td colspan="6" style="text-align:center; color:#484f58; padding:20px;">No audit entries</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
