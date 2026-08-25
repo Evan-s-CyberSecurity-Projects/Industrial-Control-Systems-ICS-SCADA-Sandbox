@@ -149,5 +149,5 @@ def encode_data_value(value, data_type: DataType, reg_count: int = 1) -> List[in
     if data_type == DataType.ASCII:
         return _pack_ascii(str(value), reg_count * 2)
     raise ValueError(f"Unknown data type: {data_type}")
-/app #
+
 
