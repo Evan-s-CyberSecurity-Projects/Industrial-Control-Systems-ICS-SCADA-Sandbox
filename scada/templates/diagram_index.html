@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <span style="color: #8b949e; font-size: 13px;">Auto-discovered process areas</span>
+    <form method="POST" action="/rediscover" style="display:inline;">
+        <button class="btn btn-secondary" type="submit">&#8635; Rediscover</button>
+    </form>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px;">
+    {% for area in areas %}
+    <div class="card">
+        <div class="card-header">
+            <span>{{ area.name }}</span>
+            <span style="font-size: 10px; color: #484f58;">{{ area.subnet }} · {{ area.device_count }} device(s)</span>
+        </div>
+        <div style="padding: 15px;">
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                {% for tag, info in area.sensor_data.items() %}
+                <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 4px; padding: 6px 10px; min-width: 100px; text-align: center;
+                    {% if info.status == 'hihi' or info.status == 'lolo' %}border-color: #da3633;
+                    {% elif info.status == 'high' %}border-color: #d29922;
+                    {% elif info.status == 'low' %}border-color: #58a6ff;
+                    {% endif %}" id="ov-box-{{ tag }}">
+                    <div style="font-size: 10px; color: #484f58;">{{ tag }}</div>
+                    <div id="ov-val-{{ tag }}" style="font-size: 18px; font-weight: 700; font-family: Consolas, monospace;
+                        {% if info.status == 'hihi' or info.status == 'lolo' %}color: #da3633;
+                        {% elif info.status == 'high' %}color: #d29922;
+                        {% elif info.status == 'low' %}color: #58a6ff;
+                        {% elif not info.online %}color: #484f58;
+                        {% else %}color: #58a6ff;{% endif %}">
+                        {% if info.value is none %}—
+                        {% elif info.value is sameas true %}ON
+                        {% elif info.value is sameas false %}OFF
+                        {% elif info.value is number %}{{ "%.1f"|format(info.value) }}
+                        {% else %}{{ info.value }}{% endif %}
+                    </div>
+                    <div style="font-size: 9px; color: #484f58;">{{ info.units }}{% if info.description %} · {{ info.description }}{% endif %}</div>
+                </div>
+                {% endfor %}
+                {% if not area.sensor_data %}
+                <div style="color: #484f58; font-size: 12px; padding: 10px;">No devices online</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if not areas %}
+<div class="card">
+    <div class="card-header"><span>No Process Areas Discovered</span></div>
+    <div style="padding: 20px; color: #484f58; text-align: center;">No PLCs found.</div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function refreshOverview() {
+    fetch('/api/sensors')
+        .then(r => r.json())
+        .then(data => {
+            for (const [tag, info] of Object.entries(data)) {
+                const el = document.getElementById('ov-val-' + tag);
+                const box = document.getElementById('ov-box-' + tag);
+                if (el) {
+                    if (info.value === null || info.value === undefined) el.textContent = '—';
+                    else if (typeof info.value === 'boolean') el.textContent = info.value ? 'ON' : 'OFF';
+                    else if (typeof info.value === 'number') el.textContent = info.value.toFixed(1);
+                    else el.textContent = info.value;
+                }
+                if (box) {
+                    box.style.borderColor = info.status === 'hihi' || info.status === 'lolo' ? '#da3633' :
+                        info.status === 'high' ? '#d29922' : info.status === 'low' ? '#58a6ff' : '#30363d';
+                    el.style.color = info.status === 'hihi' || info.status === 'lolo' ? '#da3633' :
+                        info.status === 'high' ? '#d29922' : !info.online ? '#484f58' : '#58a6ff';
+                }
+            }
+        }).catch(() => {});
+}
+setInterval(refreshOverview, 3000);
+</script>
+{% endblock %}
