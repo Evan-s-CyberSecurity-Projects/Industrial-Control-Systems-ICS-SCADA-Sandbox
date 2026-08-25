@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}{{ area.name }}{% endblock %}
+
+{% block content %}
+<div class="overview-shell">
+    <div class="overview-header">
+        <div>
+            <div class="overview-title">WASTEWATER TREATMENT OVERVIEW</div>
+            <div class="overview-subtitle">Live process diagram · {{ area.name }}</div>
+        </div>
+        <div class="overview-actions">
+            <span class="system-pill"><span class="normal-dot"></span> SYSTEM NORMAL</span>
+            <form method="POST" action="/rediscover" style="display:inline;">
+                <button class="btn btn-secondary rediscover-btn" type="submit">&#8635; Rediscover</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="pid-container">
+        {% block diagram %}{% endblock %}
+    </div>
+
+    <div class="legend-bar">
+        <span><i class="legend-line water"></i> Water Line</span>
+        <span><i class="legend-line sludge"></i> Sludge Line</span>
+        <span><i class="legend-line chemical"></i> Chemical Line</span>
+        <span><i class="legend-line gas"></i> Gas Line</span>
+        <span><i class="legend-dot online"></i> Online</span>
+        <span><i class="legend-dot offline"></i> Offline</span>
+        <span><i class="legend-dot alarm"></i> Alarm</span>
+        <span><i class="legend-dot warning"></i> Warning</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+    html, body { height: 100%; overflow: hidden; }
+    .content { padding: 0 !important; background: #06101a; height: calc(100vh - 96px); overflow: hidden; }
+    .overview-shell {
+        height: 100%;
+        background:
+            radial-gradient(circle at 50% 18%, rgba(42, 116, 180, 0.20), transparent 42%),
+            linear-gradient(180deg, #091624 0%, #07111b 60%, #050a11 100%);
+        border-top: 1px solid rgba(88,166,255,0.14);
+        color: #dce7f4;
+        padding: 10px 16px 0;
+        display: grid;
+        grid-template-rows: 42px minmax(0, 1fr) 34px;
+        gap: 8px;
+    }
+    .overview-header { display: flex; justify-content: space-between; align-items: center; gap: 14px; min-height: 0; }
+    .overview-title { color: #f3f8ff; font-size: 18px; line-height: 1; letter-spacing: .045em; font-weight: 850; text-shadow: 0 0 18px rgba(88,166,255,.28); }
+    .overview-subtitle { margin-top: 4px; color: #7890a9; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+    .overview-actions { display:flex; align-items:center; gap:10px; }
+    .system-pill { display:inline-flex; align-items:center; gap:8px; border:1px solid rgba(126,231,135,.30); background:rgba(18,42,32,.70); color:#dbffe0; padding:7px 11px; border-radius:999px; font-size:11px; font-weight:800; letter-spacing:.04em; white-space:nowrap; }
+    .normal-dot { width:9px; height:9px; border-radius:999px; background:#7ee787; box-shadow:0 0 12px rgba(126,231,135,.85); }
+    .rediscover-btn { border-radius:999px !important; padding:7px 12px !important; }
+
+    .pid-container {
+        min-height: 0;
+        background:
+            linear-gradient(180deg, rgba(10, 25, 40, .88), rgba(4, 10, 17, .92)),
+            repeating-linear-gradient(90deg, rgba(255,255,255,.014) 0, rgba(255,255,255,.014) 1px, transparent 1px, transparent 82px);
+        border: 1px solid rgba(99, 140, 184, 0.28);
+        border-radius: 16px;
+        padding: 8px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 18px 55px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.035);
+    }
+    .pid-svg { width: 100%; height: 100%; min-width: 0; display: block; }
+
+    .eq-tank { fill: url(#tg); stroke: #78bfff; stroke-width: 2; }
+    .eq-tank-fill { fill: url(#wg); opacity: 0.86; transition: height 1s, y 1s; }
+    .eq-pipe { stroke: #3a4a5b; stroke-width: 6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .eq-pipe-flow { stroke: #62d96b; stroke-width: 5.5; fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 18 10; animation: pipeflow 1.25s linear infinite; filter: drop-shadow(0 0 6px rgba(98,217,107,.40)); }
+    .sludge-flow { stroke:#f28b28 !important; filter: drop-shadow(0 0 6px rgba(242,139,40,.30)); }
+    .gas-flow { stroke:#ffbd2e !important; filter: drop-shadow(0 0 6px rgba(255,189,46,.30)); }
+    .chem-flow { stroke:#58d26f !important; stroke-dasharray:14 10; }
+    .eq-pump-body { fill:#111a24; stroke:#c8d3df; stroke-width:2.6; filter:drop-shadow(0 0 8px rgba(183,196,212,.22)); }
+    .eq-pump-blade { stroke:#c8d3df; stroke-width:2.2; transform-origin:center; }
+    .eq-pump-on .eq-pump-blade { animation:pump-spin 1s linear infinite; }
+    .eq-pump-on .eq-pump-body { stroke:#7ee787; filter:drop-shadow(0 0 10px rgba(126,231,135,.48)); }
+    .eq-valve-body { fill:#151d28; stroke:#ff6961; stroke-width:2; filter:drop-shadow(0 0 8px rgba(255,105,97,.38)); }
+    .eq-valve-open .eq-valve-body { stroke:#7ee787; fill:#11351f; filter:drop-shadow(0 0 8px rgba(126,231,135,.55)); }
+    .eq-label { fill:#f0f6fc; font-size:12px; font-family:'Segoe UI',sans-serif; text-anchor:middle; font-weight:750; text-shadow:0 1px 5px rgba(0,0,0,.7); }
+    .small-label { fill:#8ea1b6; font-size:10px; font-weight:700; font-family:'Segoe UI',sans-serif; }
+    .section-pill rect { fill:rgba(22,32,45,.78); stroke:rgba(88,166,255,.10); }
+    .section-pill text { fill:#9caec3; font-size:10px; font-weight:700; }
+    .section-pill .vlan { fill:#58a6ff; font-size:11px; }
+
+    .sensor-box { cursor:pointer; }
+    .sensor-box rect { fill:rgba(15,24,35,.94); stroke:rgba(130,154,180,.82); stroke-width:1.25; rx:8; filter:drop-shadow(0 7px 14px rgba(0,0,0,.30)); }
+    .sensor-box .sensor-tag { fill:#d8e4f1; font-size:11px; font-family:Consolas,monospace; font-weight:800; letter-spacing:.04em; }
+    .sensor-box .sensor-desc { fill:#8da1b8; font-size:9px; font-family:'Segoe UI',sans-serif; text-transform:uppercase; }
+    .sensor-box .sensor-value { fill:#58a6ff; font-size:20px; font-weight:900; font-family:Consolas,monospace; }
+    .sensor-box .sensor-unit { fill:#a5b4c7; font-size:9px; font-family:Consolas,monospace; }
+    .sensor-box.status-hihi rect { stroke:#ff6961; filter:drop-shadow(0 0 12px rgba(255,105,97,.45)); }
+    .sensor-box.status-hihi .sensor-value { fill:#ff6961; }
+    .sensor-box.status-high rect { stroke:#ffbd2e; filter:drop-shadow(0 0 10px rgba(255,189,46,.42)); }
+    .sensor-box.status-high .sensor-value { fill:#ffbd2e; }
+    .sensor-box.status-lolo rect { stroke:#bc8cff; filter:drop-shadow(0 0 10px rgba(188,140,255,.42)); }
+    .sensor-box.status-lolo .sensor-value { fill:#bc8cff; }
+    .leader { fill:none; stroke-width:1.25; stroke-dasharray:4 5; opacity:.72; stroke-linecap:round; stroke-linejoin:round; }
+    .leader-blue { stroke:#58a6ff; } .leader-green { stroke:#7ee787; } .leader-yellow { stroke:#ffbd2e; } .leader-purple { stroke:#bc8cff; } .leader-red { stroke:#ff6961; } .leader-orange { stroke:#f28b28; }
+    .leader-dot { r:3.5; filter:url(#gl); }
+
+    .legend-bar { display:flex; align-items:center; justify-content:center; flex-wrap:nowrap; gap:24px; color:#a9b8c9; font-size:11px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; min-height:0; overflow:hidden; }
+    .legend-line { display:inline-block; width:38px; height:5px; border-radius:10px; margin-right:7px; vertical-align:middle; }
+    .legend-line.water { background:#62d96b; box-shadow:0 0 8px rgba(98,217,107,.45); }
+    .legend-line.sludge { background:#f28b28; box-shadow:0 0 8px rgba(242,139,40,.35); }
+    .legend-line.chemical { background:repeating-linear-gradient(90deg,#58d26f 0 12px,transparent 12px 20px); }
+    .legend-line.gas { background:#ffbd2e; box-shadow:0 0 8px rgba(255,189,46,.4); }
+    .legend-dot { display:inline-block; width:13px; height:13px; border-radius:99px; margin-right:6px; vertical-align:-2px; border:3px solid currentColor; }
+    .legend-dot.online { color:#7ee787; background:rgba(126,231,135,.18); }
+    .legend-dot.offline { color:#7d8ba0; background:rgba(125,139,160,.18); }
+    .legend-dot.alarm { color:#ff6961; background:rgba(255,105,97,.16); }
+    .legend-dot.warning { color:#ffbd2e; background:rgba(255,189,46,.16); }
+
+    @keyframes pipeflow { to { stroke-dashoffset:-28; } }
+    @keyframes pump-spin { to { transform:rotate(360deg); } }
+</style>
+<script>
+const TAGS = {{ tags | tojson }};
+
+function updateDiagram() {
+    fetch('/api/sensors')
+        .then(r => r.json())
+        .then(data => {
+            TAGS.forEach(tag => {
+                const info = data[tag];
+                if (!info) return;
+
+                const valEl = document.getElementById('val-' + tag);
+                if (valEl) {
+                    if (info.value === null || info.value === undefined) valEl.textContent = '—';
+                    else if (typeof info.value === 'boolean') valEl.textContent = info.value ? 'ON' : 'OFF';
+                    else if (typeof info.value === 'number') valEl.textContent = info.value.toFixed(1);
+                    else valEl.textContent = info.value;
+                }
+
+                const box = document.getElementById('box-' + tag);
+                if (box) {
+                    ['status-normal','status-high','status-hihi','status-low','status-lolo','status-stale'].forEach(c => box.classList.remove(c));
+                    box.classList.add('status-' + (info.status || 'normal'));
+                }
+
+                const fillEl = document.getElementById('fill-' + tag);
+                if (fillEl && typeof info.value === 'number') {
+                    const pct = Math.max(0, Math.min(100, info.value));
+                    const tankH = parseFloat(fillEl.dataset.tankh || 120);
+                    const tankY = parseFloat(fillEl.dataset.tanky || 80);
+                    const fillH = tankH * (pct / 100);
+                    fillEl.setAttribute('height', fillH);
+                    fillEl.setAttribute('y', tankY + tankH - fillH);
+                }
+
+                const pumpEl = document.getElementById('pump-' + tag);
+                if (pumpEl) {
+                    if (info.value === true || info.value === 1) pumpEl.classList.add('eq-pump-on');
+                    else pumpEl.classList.remove('eq-pump-on');
+                }
+
+                const valveEl = document.getElementById('valve-' + tag);
+                if (valveEl) {
+                    valveEl.classList.remove('eq-valve-open', 'eq-valve-closed');
+                    if (info.value === true || info.value === 1) valveEl.classList.add('eq-valve-open');
+                    else valveEl.classList.add('eq-valve-closed');
+                }
+            });
+        });
+}
+
+setInterval(updateDiagram, 2000);
+updateDiagram();
+</script>
+{% endblock %}
