@@ -1,0 +1,157 @@
+{% extends "diagram_base.html" %}
+{% block diagram %}
+{% macro sensor(tag, desc, unit, x, y, w, lead, cls='leader-blue') -%}
+<g class="sensor-box" id="box-{{ tag }}">
+  <rect x="{{ x }}" y="{{ y }}" width="{{ w }}" height="56"/>
+  <text class="sensor-tag" x="{{ x + 12 }}" y="{{ y + 17 }}">{{ tag }}</text>
+  <text class="sensor-desc" x="{{ x + 12 }}" y="{{ y + 31 }}">{{ desc }}</text>
+  <text class="sensor-value" x="{{ x + 12 }}" y="{{ y + 51 }}" id="val-{{ tag }}">—</text>
+  {% if unit %}<text class="sensor-unit" x="{{ x + w - 34 }}" y="{{ y + 51 }}">{{ unit }}</text>{% endif %}
+</g>
+<path class="leader {{ cls }}" d="{{ lead }}"/>
+{%- endmacro %}
+
+<svg viewBox="0 0 1600 760" class="pid-svg" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="tg" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#172233"/><stop offset="50%" stop-color="#223650"/><stop offset="100%" stop-color="#172233"/></linearGradient>
+    <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2385d0" stop-opacity="0.82"/><stop offset="100%" stop-color="#0e3c64" stop-opacity="0.62"/></linearGradient>
+    <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#76672b" stop-opacity="0.62"/><stop offset="100%" stop-color="#4c2a08" stop-opacity="0.76"/></linearGradient>
+    <filter id="gl"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+
+  <!-- main water process -->
+  <path class="eq-pipe" d="M 20 304 H 70 M 160 304 H 226 M 300 304 H 350 M 405 304 H 455 M 585 304 H 650 M 865 304 H 925 M 1065 304 H 1125 M 1415 304 H 1550"/>
+  <path class="eq-pipe-flow" d="M 20 304 H 70 M 160 304 H 226 M 300 304 H 350 M 405 304 H 455 M 585 304 H 650 M 865 304 H 925 M 1065 304 H 1125 M 1415 304 H 1550"/>
+  <polygon points="16,297 31,304 16,311" fill="#58a6ff"/><text x="18" y="286" fill="#58a6ff" font-size="11" font-weight="800">INFLUENT</text>
+  <polygon points="1547,297 1562,304 1547,311" fill="#7ee787"/><text x="1492" y="286" fill="#7ee787" font-size="11" font-weight="800">EFFLUENT</text>
+
+  <!-- wet well -->
+  <rect class="eq-tank" x="70" y="230" width="90" height="150" rx="5"/>
+  <rect class="eq-tank-fill" id="fill-LT-101" x="73" y="305" width="84" height="72" data-tankh="144" data-tanky="233"/>
+  <line x1="82" y1="238" x2="82" y2="370" stroke="#8fa8c4" opacity=".35"/><line x1="148" y1="238" x2="148" y2="370" stroke="#8fa8c4" opacity=".35"/>
+  <text x="115" y="405" class="eq-label">Wet Well</text>
+
+  <!-- screen -->
+  <rect x="226" y="264" width="74" height="80" rx="4" fill="url(#tg)" stroke="#9fb1c7" stroke-width="2"/>
+  {% for i in range(7) %}<line x1="{{ 237+i*8 }}" y1="272" x2="{{ 237+i*8 }}" y2="336" stroke="#75869a" opacity=".45"/>{% endfor %}
+  <text x="263" y="371" class="eq-label">Screen</text>
+
+  <!-- P-101 -->
+  <g id="pump-P-101">
+    <circle class="eq-pump-body" cx="378" cy="304" r="30"/>
+    <g class="eq-pump-blade" style="transform-origin:378px 304px;"><line x1="378" y1="278" x2="378" y2="330"/><line x1="352" y1="304" x2="404" y2="304"/></g>
+  </g>
+  <text x="378" y="352" class="eq-label">P-101</text>
+
+  <!-- primary clarifier -->
+  <ellipse class="eq-tank" cx="520" cy="260" rx="72" ry="20"/>
+  <rect class="eq-tank" x="448" y="260" width="144" height="86"/>
+  <rect class="eq-tank-fill" id="fill-LT-201" x="451" y="302" width="138" height="41" data-tankh="82" data-tanky="263"/>
+  <ellipse class="eq-tank" cx="520" cy="346" rx="72" ry="18"/>
+  <line x1="520" y1="268" x2="520" y2="340" stroke="#c8d3df" opacity=".45"/><circle cx="520" cy="268" r="9" fill="#c8d3df" opacity=".55"/>
+  <text x="520" y="392" class="eq-label">Primary Clarifier</text>
+
+  <!-- aeration basin -->
+  <rect class="eq-tank" x="650" y="246" width="215" height="116" rx="5"/>
+  <rect class="eq-tank-fill" x="653" y="300" width="209" height="59"/>
+  {% for x in [706,810] %}<line x1="{{ x }}" y1="250" x2="{{ x }}" y2="356" stroke="#8fa8c4" opacity=".32"/><circle cx="{{ x }}" cy="318" r="10" fill="none" stroke="#7ee787" stroke-width="3"/>{% endfor %}
+  {% for i in range(16) %}<circle cx="{{ 675 + (i*13)%165 }}" cy="{{ 270 + (i*19)%70 }}" r="2" fill="#8ac7ff" opacity=".35"/>{% endfor %}
+  <text x="758" y="392" class="eq-label">Aeration Basin</text>
+
+  <!-- secondary clarifier -->
+  <ellipse class="eq-tank" cx="995" cy="260" rx="72" ry="20"/>
+  <rect class="eq-tank" x="923" y="260" width="144" height="86"/>
+  <rect class="eq-tank-fill" id="fill-LT-401" x="926" y="301" width="138" height="42" data-tankh="82" data-tanky="263"/>
+  <ellipse class="eq-tank" cx="995" cy="346" rx="72" ry="18"/>
+  <line x1="995" y1="268" x2="995" y2="340" stroke="#c8d3df" opacity=".45"/><circle cx="995" cy="268" r="9" fill="#c8d3df" opacity=".55"/>
+  <text x="995" y="392" class="eq-label">Secondary Clarifier</text>
+
+  <!-- contact tank -->
+  <rect class="eq-tank" x="1125" y="260" width="290" height="92" rx="5"/>
+  <rect class="eq-tank-fill" id="fill-LT-501" x="1128" y="292" width="284" height="57" data-tankh="86" data-tanky="263"/>
+  {% for x in [1190,1260,1330] %}<line x1="{{ x }}" y1="264" x2="{{ x }}" y2="340" stroke="#505f70" stroke-width="2"/>{% endfor %}
+  <path class="eq-pipe" d="M 1190 260 V 220 H 1240"/>
+  <g id="valve-AV-501" class="eq-valve-closed"><polygon class="eq-valve-body" points="1207,220 1223,210 1223,230"/><polygon class="eq-valve-body" points="1239,220 1223,210 1223,230"/></g>
+  <text x="1270" y="392" class="eq-label">Contact Tank</text>
+
+  <!-- sludge line -->
+  <path class="eq-pipe" d="M 520 365 V 500 H 590 M 700 520 H 760 M 815 520 H 900 M 1045 520 H 1115"/>
+  <path class="eq-pipe-flow sludge-flow" d="M 520 365 V 500 H 590 M 700 520 H 760 M 815 520 H 900 M 1045 520 H 1115"/>
+  <text x="410" y="505" fill="#f28b28" font-size="12" font-weight="800">SLUDGE</text><text x="410" y="520" fill="#f28b28" font-size="12" font-weight="800">TREATMENT</text>
+  <g id="valve-MV-201" class="eq-valve-closed"><polygon class="eq-valve-body" points="508,432 520,420 520,444"/><polygon class="eq-valve-body" points="532,432 520,420 520,444"/></g>
+
+  <!-- thickener -->
+  <rect class="eq-tank" x="590" y="465" width="110" height="80"/>
+  <polygon points="590,545 645,600 700,545" fill="url(#tg)" stroke="#78bfff" stroke-width="2"/>
+  <rect class="eq-tank-fill" id="fill-LT-601" x="593" y="506" width="104" height="36" data-tankh="76" data-tanky="468"/>
+  <line x1="645" y1="458" x2="645" y2="587" stroke="#c8d3df" opacity=".48"/>
+  <text x="645" y="625" class="eq-label">Thickener</text>
+
+  <!-- P-601 -->
+  <g id="pump-P-601"><circle class="eq-pump-body" cx="790" cy="520" r="28"/><g class="eq-pump-blade" style="transform-origin:790px 520px;"><line x1="790" y1="496" x2="790" y2="544"/><line x1="766" y1="520" x2="814" y2="520"/></g></g>
+  <text x="790" y="564" class="eq-label">P-601</text>
+
+  <!-- digester -->
+  <ellipse class="eq-tank" cx="975" cy="520" rx="75" ry="92"/>
+  <ellipse cx="975" cy="545" rx="64" ry="58" fill="url(#sg)" opacity=".85"/>
+  <path class="eq-pipe gas-flow" d="M 975 425 V 400"/><text x="985" y="395" fill="#ffbd2e" font-size="12" font-weight="800">GAS</text>
+  <text x="975" y="637" class="eq-label">Digester</text>
+  <circle cx="946" cy="525" r="7" fill="none" stroke="#ff6961" stroke-width="2" filter="url(#gl)"/><circle cx="1002" cy="462" r="7" fill="none" stroke="#ffbd2e" stroke-width="2" filter="url(#gl)"/>
+
+  <!-- belt press -->
+  <rect x="1115" y="480" width="150" height="75" rx="5" fill="url(#tg)" stroke="#aab8ca" stroke-width="2"/>
+  {% for x in [1145,1188,1231] %}<circle cx="{{ x }}" cy="518" r="20" fill="none" stroke="#9aacc2" stroke-width="2"/>{% endfor %}
+  <text x="1190" y="588" class="eq-label">Belt Press</text>
+  <path class="eq-pipe" d="M 1265 520 H 1360"/><text x="1370" y="525" class="small-label">CAKE</text>
+  <path class="eq-pipe chem-flow" d="M 1190 555 V 585 H 1370"/><text x="1380" y="589" class="small-label">FILTRATE</text>
+
+  <!-- instrument dots -->
+  <circle class="leader-dot" cx="115" cy="235" fill="#58a6ff"/><circle class="leader-dot" cx="115" cy="300" fill="#58a6ff"/>
+  <circle class="leader-dot" cx="226" cy="288" fill="#ffbd2e"/><circle class="leader-dot" cx="300" cy="288" fill="#ffbd2e"/>
+  <circle class="leader-dot" cx="520" cy="302" fill="#58a6ff"/><circle class="leader-dot" cx="585" cy="304" fill="#58a6ff"/>
+  <circle class="leader-dot" cx="706" cy="318" fill="#7ee787"/><circle class="leader-dot" cx="810" cy="318" fill="#bc8cff"/>
+  <circle class="leader-dot" cx="995" cy="302" fill="#58a6ff"/><circle class="leader-dot" cx="960" cy="318" fill="#ffbd2e"/><circle class="leader-dot" cx="1030" cy="318" fill="#bc8cff"/>
+  <circle class="leader-dot" cx="1290" cy="260" fill="#58a6ff"/><circle class="leader-dot" cx="1390" cy="304" fill="#7ee787"/>
+  <circle class="leader-dot" cx="645" cy="500" fill="#bc8cff"/><circle class="leader-dot" cx="946" cy="525" fill="#ff6961"/><circle class="leader-dot" cx="1002" cy="462" fill="#ffbd2e"/>
+
+  <!-- VLAN bands -->
+  <g class="section-pill"><rect x="65" y="420" width="145" height="25" rx="4"/><text class="vlan" x="78" y="437">VLAN 10</text><text x="132" y="437">Influent</text></g>
+  <g class="section-pill"><rect x="235" y="420" width="160" height="25" rx="4"/><text class="vlan" x="248" y="437">VLAN 20</text><text x="304" y="437">Primary</text></g>
+  <g class="section-pill"><rect x="665" y="420" width="160" height="25" rx="4"/><text class="vlan" x="678" y="437">VLAN 30</text><text x="734" y="437">Aeration</text></g>
+  <g class="section-pill"><rect x="930" y="420" width="160" height="25" rx="4"/><text class="vlan" x="943" y="437" fill="#bc8cff">VLAN 40</text><text x="1000" y="437">Clarifier</text></g>
+  <g class="section-pill"><rect x="1135" y="420" width="195" height="25" rx="4"/><text class="vlan" x="1148" y="437" fill="#bc8cff">VLAN 50</text><text x="1208" y="437">Disinfection</text></g>
+
+  <!-- top row sensors: short grouped drops to equipment, no criss-crossing -->
+  {{ sensor('FT-101','FLOW','gpm', 20, 22, 118, 'M 79 78 V 205 H 55 V 304', 'leader-blue') }}
+  {{ sensor('LT-101','LEVEL','%', 150, 22, 118, 'M 209 78 V 205 H 115 V 235', 'leader-blue') }}
+  {{ sensor('DP-101','DIFF PRESS','psi', 280, 22, 126, 'M 343 78 V 214 H 262 V 288', 'leader-yellow') }}
+  {{ sensor('P-101','PUMP','', 418, 22, 104, 'M 470 78 V 170 H 378 V 274', 'leader-green') }}
+  {{ sensor('FT-201','FLOW','gpm', 535, 22, 126, 'M 598 78 V 196 H 585 V 304', 'leader-blue') }}
+  {{ sensor('LT-201','LEVEL','%', 673, 22, 118, 'M 732 78 V 198 H 520 V 302', 'leader-blue') }}
+  {{ sensor('DP-201','DIFF PRESS','psi', 803, 22, 126, 'M 866 78 V 196 H 520 V 346', 'leader-yellow') }}
+  {{ sensor('DO-301','DISSOLVED O₂','mg/L', 941, 22, 130, 'M 1006 78 V 190 H 706 V 318', 'leader-green') }}
+  {{ sensor('MLSS-301','MLVSS','mg/L', 1084, 22, 126, 'M 1147 78 V 190 H 810 V 318', 'leader-purple') }}
+  {{ sensor('FT-401','FLOW','gpm', 1222, 22, 126, 'M 1285 78 V 194 H 1065 V 304', 'leader-blue') }}
+  {{ sensor('LT-401','LEVEL','%', 1360, 22, 108, 'M 1414 78 V 188 H 995 V 302', 'leader-blue') }}
+  {{ sensor('CL-501','CHLORINE','mg/L', 1480, 22, 118, 'M 1539 78 V 195 H 1390 V 304', 'leader-green') }}
+
+  <!-- local row sensors, directly above target equipment -->
+  {{ sensor('MV-201','MIXER','', 445, 130, 105, 'M 497 186 V 420 H 520', 'leader-green') }}
+  {{ sensor('SV-301','BLOWER','%', 705, 130, 110, 'M 760 186 V 318', 'leader-green') }}
+  {{ sensor('TU-401','TURBIDITY','NTU', 922, 130, 118, 'M 981 186 V 318 H 960', 'leader-yellow') }}
+  {{ sensor('DL-401','DOSE','pH', 1052, 130, 108, 'M 1106 186 V 318 H 1030', 'leader-purple') }}
+  {{ sensor('LT-501','LEVEL','%', 1228, 130, 108, 'M 1282 186 V 260 H 1290', 'leader-blue') }}
+  {{ sensor('AV-501','VALVE','', 1360, 130, 108, 'M 1414 186 V 220 H 1223', 'leader-green') }}
+
+  <!-- sludge row sensors: connected with bottom bus to avoid crossing plant -->
+  <path class="leader leader-orange" d="M 145 704 H 1415" opacity=".42"/>
+  {{ sensor('FT-601','SLUDGE FLOW','gpm', 115, 655, 132, 'M 181 655 V 704 H 545 V 500', 'leader-orange') }}
+  {{ sensor('LT-601','THICKENER LEVEL','%', 275, 655, 140, 'M 345 655 V 704 H 593 V 506', 'leader-orange') }}
+  {{ sensor('SS-601','SOLIDS','%', 445, 655, 132, 'M 511 655 V 704 H 645 V 500', 'leader-orange') }}
+  {{ sensor('P-601','PUMP','', 607, 655, 115, 'M 665 655 V 704 H 790 V 548', 'leader-orange') }}
+  {{ sensor('T-701','DIGESTER TEMP','°C', 752, 655, 142, 'M 823 655 V 704 H 946 V 525', 'leader-orange') }}
+  {{ sensor('PT-701','PRESSURE','psi', 922, 655, 132, 'M 988 655 V 704 H 1002 V 462', 'leader-orange') }}
+  {{ sensor('GAS-701','GAS FLOW','scfm', 1082, 655, 142, 'M 1153 655 V 704 H 975 V 400', 'leader-orange') }}
+  {{ sensor('FT-701','BIOGAS FLOW','gpm', 1252, 655, 132, 'M 1318 655 V 704 H 1190 V 585', 'leader-orange') }}
+</svg>
+{% endblock %}
