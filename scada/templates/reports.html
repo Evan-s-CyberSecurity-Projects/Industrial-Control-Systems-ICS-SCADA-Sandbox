@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span>&#128203; Daily Summary Report</span>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <form method="GET" action="/reports" style="display:flex; gap:8px; align-items:center;">
+                <input type="date" name="date" value="{{ selected_date }}">
+                <button class="btn btn-secondary" type="submit">View</button>
+            </form>
+            <form method="POST" action="/reports/generate" style="display:inline;">
+                <input type="hidden" name="date" value="{{ selected_date }}">
+                <button class="btn btn-primary" type="submit">Generate Report</button>
+            </form>
+        </div>
+    </div>
+
+    {% if summaries %}
+    <table>
+        <thead>
+            <tr>
+                <th>Tag</th>
+                <th>Date</th>
+                <th>Min</th>
+                <th>Max</th>
+                <th>Average</th>
+                <th>Samples</th>
+                <th>Range</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in summaries %}
+            <tr>
+                <td><strong>{{ s.tag }}</strong></td>
+                <td>{{ s.date }}</td>
+                <td style="font-family: Consolas, monospace; color: #58a6ff;">{{ "%.2f"|format(s.min_value) if s.min_value is not none else '—' }}</td>
+                <td style="font-family: Consolas, monospace; color: #f78166;">{{ "%.2f"|format(s.max_value) if s.max_value is not none else '—' }}</td>
+                <td style="font-family: Consolas, monospace; color: #7ee787;">{{ "%.2f"|format(s.avg_value) if s.avg_value is not none else '—' }}</td>
+                <td>{{ s.sample_count }}</td>
+                <td style="font-family: Consolas, monospace; color: #484f58;">
+                    {% if s.min_value is not none and s.max_value is not none %}
+                        {{ "%.2f"|format(s.max_value - s.min_value) }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="padding: 20px; color: #484f58; text-align: center;">
+        No summary data for {{ selected_date }}. Click "Generate Report" to create one from recorded historian data.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
