@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}PLC Logic Upload{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span>PLC Runtime Logic Upload</span>
+        <form method="post" action="/rediscover" style="margin:0;">
+            <button class="btn btn-secondary" type="submit">Rediscover Devices</button>
+        </form>
+    </div>
+    <div style="padding: 14px; color: #8b949e; font-size: 13px; line-height: 1.5;">
+        Upload a YAML logic file directly to each PLC's <code>/logic</code> endpoint.
+        The PLC hot-reloads the file immediately, so no container rebuild is needed.
+        This page only lists PLC devices discovered by SCADA.
+    </div>
+</div>
+
+{% if not plcs %}
+<div class="card">
+    <div class="card-header">No PLCs Discovered</div>
+    <div style="padding: 14px;">
+        SCADA has not discovered any PLCs yet. Check <code>SCADA_TARGETS</code> / <code>SCADA_SUBNETS</code>, then click Rediscover Devices.
+    </div>
+</div>
+{% endif %}
+
+{% for plc in plcs %}
+<div class="card">
+    <div class="card-header">
+        <span>{{ plc.tag }} — {{ plc.ip }}</span>
+        <span style="font-size: 11px; color: {% if plc.logic_api_ok %}#3fb950{% else %}#da3633{% endif %};">
+            Logic API: {% if plc.logic_api_ok %}ONLINE{% else %}OFFLINE{% endif %}
+        </span>
+    </div>
+    <div style="padding: 14px; display: grid; grid-template-columns: 360px 1fr; gap: 16px; align-items: start;">
+        <div>
+            <div style="margin-bottom: 8px; color: #8b949e;">
+                <strong>Description:</strong> {{ plc.description or "—" }}<br>
+                <strong>Rules Loaded:</strong> {{ plc.rules_loaded }}<br>
+                {% if plc.logic_api_error %}<strong>Error:</strong> {{ plc.logic_api_error }}{% endif %}
+            </div>
+
+            <form method="post" action="/plc-logic/upload" enctype="multipart/form-data">
+                <input type="hidden" name="plc_tag" value="{{ plc.tag }}">
+                <input type="file" name="logic_file" accept=".yaml,.yml,text/yaml,application/x-yaml" required style="margin-bottom: 10px; width: 100%;">
+                <button class="btn btn-primary" type="submit">Upload Logic to {{ plc.tag }}</button>
+            </form>
+        </div>
+
+        <div>
+            <div style="font-size: 12px; color: #8b949e; margin-bottom: 6px; text-transform: uppercase;">Current Logic</div>
+            <pre style="background:#0d1117; border:1px solid #30363d; border-radius:4px; padding:10px; max-height:320px; overflow:auto; white-space:pre-wrap; color:#c9d1d9;">{{ plc.logic or "No logic file returned from PLC." }}</pre>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
