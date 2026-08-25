@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Plant Overview{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span>No P&amp;ID diagram configured</span>
+        <span style="font-size: 11px; color: #484f58;">Set SCADA_DIAGRAM_CONFIG to enable diagrams</span>
+    </div>
+    <div style="padding: 20px; color: #484f58; text-align: center;">
+        <p>The SCADA is running and collecting data. Configure a diagram template to see the P&amp;ID view.</p>
+        <p style="margin-top: 10px;"><a href="/overview" style="color: #58a6ff;">View auto-discovered sensors &#9654;</a></p>
+    </div>
+</div>
+{% endblock %}
