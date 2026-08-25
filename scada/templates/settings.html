@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span>&#9881; Alarm Threshold Configuration (SCADA Master)</span>
+        <form method="POST" action="/settings/push-all" style="display:inline;">
+            <button class="btn btn-primary" type="submit">&#8635; Push All to HMIs</button>
+        </form>
+    </div>
+    <div style="padding: 8px 15px; background: #0d1117; border-bottom: 1px solid #30363d; font-size: 12px; color: #8b949e;">
+        Changes made here are automatically pushed to all connected HMIs. The SCADA server is the master — HMI settings are overwritten.
+    </div>
+    <table>
+        <thead>
+            <tr><th>Tag</th><th>Description</th><th>Units</th><th>LOLO</th><th>LO</th><th>HI</th><th>HIHI</th><th>Deadband</th><th>Enabled</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+            {% for s in sensors %}
+            <tr>
+                <form method="POST" action="/settings/update">
+                    <input type="hidden" name="tag" value="{{ s.tag }}">
+                    <td><strong>{{ s.tag }}</strong></td>
+                    <td>{{ s.description }}</td>
+                    <td>{{ s.units }}</td>
+                    <td><input type="number" step="any" name="low_low" value="{{ s.config.low_low if s.config and s.config.low_low is not none else '' }}" placeholder="—" style="width:80px;"></td>
+                    <td><input type="number" step="any" name="low" value="{{ s.config.low if s.config and s.config.low is not none else '' }}" placeholder="—" style="width:80px;"></td>
+                    <td><input type="number" step="any" name="high" value="{{ s.config.high if s.config and s.config.high is not none else '' }}" placeholder="—" style="width:80px;"></td>
+                    <td><input type="number" step="any" name="high_high" value="{{ s.config.high_high if s.config and s.config.high_high is not none else '' }}" placeholder="—" style="width:80px;"></td>
+                    <td><input type="number" step="any" name="deadband" value="{{ s.config.deadband if s.config else '1.0' }}" style="width:60px;"></td>
+                    <td style="text-align:center;"><input type="checkbox" name="enabled" {{ 'checked' if not s.config or s.config.enabled else '' }}></td>
+                    <td><button class="btn btn-primary" type="submit">Save & Push</button></td>
+                </form>
+            </tr>
+            {% endfor %}
+            {% if not sensors %}
+            <tr><td colspan="10" style="text-align:center; color:#484f58; padding:20px;">No sensors discovered</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+<div style="padding: 10px; color: #484f58; font-size: 12px;">
+    Leave a field empty to disable that threshold level. Deadband prevents alarm chatter.
+    All changes are recorded in the <a href="/audit" style="color: #58a6ff;">audit log</a>.
+</div>
+
+<div class="card" style="margin-top: 15px;">
+    <div class="card-header">
+        <span>&#128228; Upload Alarm Defaults</span>
+    </div>
+    <div style="padding: 15px;">
+        <p style="color: #8b949e; font-size: 12px; margin-bottom: 10px;">
+            Upload a YAML file to bulk-update alarm thresholds. The file should use the same format as the built-in defaults
+            (sensors: → tag: → high_high, high, low, low_low, deadband). Existing configs will be overwritten.
+        </p>
+        <form method="POST" action="/settings/upload-defaults" enctype="multipart/form-data" style="display: flex; gap: 10px; align-items: center;">
+            <input type="file" name="defaults_file" accept=".yaml,.yml" style="color: #8b949e; font-size: 12px;">
+            <button class="btn btn-primary" type="submit">Upload & Apply</button>
+        </form>
+        <div style="margin-top: 10px; padding: 10px; background: #0d1117; border: 1px solid #30363d; border-radius: 4px;">
+            <p style="color: #484f58; font-size: 11px; font-family: Consolas, monospace; margin: 0;">
+                Example format:<br>
+                sensors:<br>
+                &nbsp;&nbsp;FT-101:<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;high_high: 850<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;high: 750<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;low: 150<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;low_low: 50<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;deadband: 20
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
