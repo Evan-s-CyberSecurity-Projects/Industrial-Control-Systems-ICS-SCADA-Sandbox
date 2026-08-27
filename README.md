@@ -316,11 +316,11 @@ Environment-specific values are supplied through local configuration or environm
 
 ### GNS3 Topology
 
-![GNS3 Topology](./Screenshots/topology.png)
+![GNS3 Topology](./Screenshots/Topology.png)
 
 ### SCADA Dashboard
 
-![SCADA Dashboard](./Screenshots/scada-dashboard.png)
+![SCADA Dashboard](./Screenshots/SCADA-dashboard.png)
 
 ### PLC Discovery
 
